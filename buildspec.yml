@@ -8,6 +8,8 @@ env:
     S3_UPLOAD_PATH: "game/${EXECUTABLE_NAME}"
     DOCKERHUB_USERNAME: "foxe03"
     DOCKERHUB_SECRET_ARN: "arn:aws:secretsmanager:us-east-1:339712721384:secret:docker-us-JYDQoe"
+    WEB_APP_NAME: "webapp"
+    API_NAME: "api"
 
 phases:
   install:
@@ -22,19 +24,29 @@ phases:
   pre_build:
     commands:
       - echo "Logging in to Docker Hub..."
-      - $secrets = Get-SECSecretValue -SecretId ${DOCKERHUB_SECRET_ARN} | ConvertFrom-Json
-      - docker login -u "${DOCKERHUB_USERNAME}" -p $secrets.SecretString.password
+      - $secretValue = Get-SECSecretValue -SecretId ${DOCKERHUB_SECRET_ARN}
+      - $dockerHubPassword = ($secretValue.SecretString | ConvertFrom-Json).password
+      - docker login -u "${DOCKERHUB_USERNAME}" -p $dockerHubPassword
   build:
     commands:
-      - pyinstaller --onefile --hidden-import=psycopg2 src/ui.py
+      # Build the game executable and Docker image
+      - pyinstaller --onefile --hidden-import=psycopg2 src/game_ui.py  # Adjust path to game UI script
       - docker build -t ${DOCKERHUB_USERNAME}/${GAME_NAME}:latest .
       - docker push ${DOCKERHUB_USERNAME}/${GAME_NAME}:latest
+      
+      # Build the web app Docker image
+      - docker build -t ${DOCKERHUB_USERNAME}/${WEB_APP_NAME}:latest ./webapp  # Adjust path to web app folder
+      - docker push ${DOCKERHUB_USERNAME}/${WEB_APP_NAME}:latest
+      
+      # Build the API Docker image
+      - docker build -t ${DOCKERHUB_USERNAME}/${API_NAME}:latest ./api  # Adjust path to API folder
+      - docker push ${DOCKERHUB_USERNAME}/${API_NAME}:latest
   post_build:
     commands:
       - echo "Listing all files in dist directory:"
       - dir dist
-      - echo "Uploading executable to S3..."
-      - aws s3 cp dist/ui.exe s3://${S3_BUCKET_NAME}/${S3_UPLOAD_PATH}
+      - echo "Uploading game executable to S3..."
+      - aws s3 cp dist/game_ui.exe s3://${S3_BUCKET_NAME}/${S3_UPLOAD_PATH}
 artifacts:
   files:
     - 'dist/*'
