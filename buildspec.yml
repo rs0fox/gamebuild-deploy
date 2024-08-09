@@ -23,23 +23,25 @@ phases:
       - powershell -Command "Install-Module -Name AWS.Tools.SecretsManager -Force -Scope CurrentUser"
   pre_build:
     commands:
+      - echo "Retrieving Docker Hub credentials..."
+      - $secret = Get-SECSecretValue -SecretId ${DOCKERHUB_SECRET_ARN} | ConvertFrom-Json
+      - $dockerHubPassword = $secret.SecretString.password
       - echo "Logging in to Docker Hub..."
-      - $secretValue = Get-SECSecretValue -SecretId ${DOCKERHUB_SECRET_ARN}
-      - $dockerHubPassword = ($secretValue.SecretString | ConvertFrom-Json).password
-      - docker login -u "${DOCKERHUB_USERNAME}" -p $dockerHubPassword
+      - echo "DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME}"
+      - docker login -u "${DOCKERHUB_USERNAME}" -p $dockerHubPassword || echo "Docker login failed" && exit 1
   build:
     commands:
-      # Build the game executable and Docker image
-      - pyinstaller --onefile --hidden-import=psycopg2 src/game_ui.py  # Adjust path to game UI script
+      - echo "Building game executable and Docker image..."
+      - pyinstaller --onefile --hidden-import=psycopg2 src/game_ui.py
       - docker build -t ${DOCKERHUB_USERNAME}/${GAME_NAME}:latest .
       - docker push ${DOCKERHUB_USERNAME}/${GAME_NAME}:latest
       
-      # Build the web app Docker image
-      - docker build -t ${DOCKERHUB_USERNAME}/${WEB_APP_NAME}:latest ./webapp  # Adjust path to web app folder
+      - echo "Building web app Docker image..."
+      - docker build -t ${DOCKERHUB_USERNAME}/${WEB_APP_NAME}:latest ./webapp
       - docker push ${DOCKERHUB_USERNAME}/${WEB_APP_NAME}:latest
       
-      # Build the API Docker image
-      - docker build -t ${DOCKERHUB_USERNAME}/${API_NAME}:latest ./api  # Adjust path to API folder
+      - echo "Building API Docker image..."
+      - docker build -t ${DOCKERHUB_USERNAME}/${API_NAME}:latest ./api
       - docker push ${DOCKERHUB_USERNAME}/${API_NAME}:latest
   post_build:
     commands:
