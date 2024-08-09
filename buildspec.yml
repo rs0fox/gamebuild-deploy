@@ -6,17 +6,27 @@ env:
     GAME_NAME: "tictactoe"  # Assuming the game name, modify if different
     EXECUTABLE_NAME: "${GAME_NAME}-executable.exe"
     S3_UPLOAD_PATH: "game/${EXECUTABLE_NAME}"  # Modify if a different path in S3 is required
+    DOCKERHUB_USERNAME: "foxe03"  # Your Docker Hub username
+    DOCKERHUB_SECRET_ARN: "arn:aws:secretsmanager:us-east-1:339712721384:secret:docker-us-JYDQoe"  # Updated ARN for Docker Hub credentials
 
 phases:
   install:
     runtime-versions:
       python: 3.8
+      docker: 20  # Add Docker runtime for building and pushing the image
     commands:
       - pip install pyinstaller
       - pip install psycopg2-binary  # Ensure psycopg2 is installed
+  pre_build:
+    commands:
+      - echo "Logging in to Docker Hub..."
+      - export DOCKERHUB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${DOCKERHUB_SECRET_ARN} --query 'SecretString' --output text | jq -r .password)
+      - echo "${DOCKERHUB_PASSWORD}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
   build:
     commands:
       - pyinstaller --onefile --hidden-import=psycopg2 src/ui.py  # Include psycopg2 in hidden imports
+      - docker build -t ${DOCKERHUB_USERNAME}/${GAME_NAME}:latest .
+      - docker push ${DOCKERHUB_USERNAME}/${GAME_NAME}:latest
   post_build:
     commands:
       - echo "Listing all files in dist directory:"
