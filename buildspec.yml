@@ -1,0 +1,28 @@
+version: 0.2
+
+env:
+  variables:
+    S3_BUCKET_NAME: "builddb"
+    GAME_NAME: "tictactoe"  # Assuming the game name, modify if different
+    EXECUTABLE_NAME: "${GAME_NAME}-executable.exe"
+    S3_UPLOAD_PATH: "game/${EXECUTABLE_NAME}"  # Modify if a different path in S3 is required
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+    commands:
+      - pip install pyinstaller
+      - pip install psycopg2-binary  # Ensure psycopg2 is installed
+  build:
+    commands:
+      - pyinstaller --onefile --hidden-import=psycopg2 src/ui.py  # Include psycopg2 in hidden imports
+  post_build:
+    commands:
+      - echo "Listing all files in dist directory:"
+      - dir dist
+      - echo "Uploading executable to S3..."
+      - aws s3 cp dist/ui.exe s3://${S3_BUCKET_NAME}/${S3_UPLOAD_PATH}
+artifacts:
+  files:
+    - 'dist/*'

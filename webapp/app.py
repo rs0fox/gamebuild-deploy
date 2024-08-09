@@ -4,7 +4,7 @@ import boto3
 app = Flask(__name__)
 
 # Replace with your actual S3 bucket and region
-S3_BUCKET = "nomad-tictactoe-project"
+S3_BUCKET = "builddb"
 S3_REGION = "ap-south-1"
 
 @app.route('/')

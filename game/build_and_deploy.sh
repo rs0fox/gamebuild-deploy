@@ -8,6 +8,6 @@ pyinstaller --onefile tictactoe_game.py"
 
 # Step 2: Upload the executable to S3
 echo "Uploading executable to S3..."
-aws s3 cp dist/tictactoe_game.exe s3://nomad-tictactoe-project/tictactoe-executable.exe
+aws s3 cp dist/tictactoe_game.exe s3://builddb/tictactoe-executable.exe
 
 echo "Deployment complete!"
